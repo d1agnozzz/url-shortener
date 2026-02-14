@@ -29,7 +29,7 @@ func Test_urlSanitizer_Sanitize(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "simple path",
+			name:    "plain path",
 			raw:     "/home/foo/bar",
 			want:    "",
 			wantErr: true,
@@ -63,36 +63,6 @@ func Test_urlSanitizer_Sanitize(t *testing.T) {
 			raw:     "https://example.com/foobar//////////",
 			want:    "https://example.com/foobar",
 			wantErr: false,
-		},
-		{
-			name:    "with port",
-			raw:     "https://example.com:3000/foobar",
-			want:    "https://example.com:3000/foobar",
-			wantErr: false,
-		},
-		{
-			name:    "port out of range",
-			raw:     "https://example.com:9999999999/foobar",
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name:    "maximum possible port",
-			raw:     "https://example.com:65535",
-			want:    "https://example.com:65535",
-			wantErr: false,
-		},
-		{
-			name:    "minimum possible port",
-			raw:     "https://example.com:0",
-			want:    "https://example.com:0",
-			wantErr: false,
-		},
-		{
-			name:    "invalid port",
-			raw:     "https://example.com:PORT/foobar",
-			want:    "",
-			wantErr: true,
 		},
 		{
 			name:    "with query params",
@@ -134,7 +104,6 @@ func Test_urlSanitizer_Sanitize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// TODO: construct the receiver type.
 			s := NewUrlSanitizer()
 			got, gotErr := s.Sanitize(tt.raw)
 			if gotErr != nil {
@@ -146,7 +115,6 @@ func Test_urlSanitizer_Sanitize(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("Sanitize() succeeded unexpectedly")
 			}
-			// TODO: update the condition below to compare got with tt.want.
 			if got != tt.want {
 				t.Errorf("Sanitize() = %v, want %v", got, tt.want)
 			}

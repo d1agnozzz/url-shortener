@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"path"
-	"strconv"
 	"strings"
 )
 
@@ -31,8 +30,15 @@ func (s *urlSanitizer) Sanitize(raw string) (string, error) {
 		return "", fmt.Errorf("url '%s' can't be parsed because: %s", trimmed, err)
 	}
 
+	if parsed.Scheme != "https" && parsed.Scheme != "http" { // reject non-http urls
+		return "", fmt.Errorf("only http and https supported, but got '%s'", parsed)
+	}
+	if parsed.Port() != "" { // reject urls with port
+		return "", fmt.Errorf("only urls without port are accepted, but got '%s'", parsed)
+	}
+
 	if parsed.Host == "" {
-		return "", fmt.Errorf("host is empty: %s", parsed)
+		return "", fmt.Errorf("url host is empty: %s", parsed)
 	}
 
 	parsed.User = nil // strip username and password
@@ -43,11 +49,6 @@ func (s *urlSanitizer) Sanitize(raw string) (string, error) {
 
 	parsed.RawQuery = parsed.Query().Encode()  // sort query params
 	parsed.Host = strings.ToLower(parsed.Host) // normalize host case
-
-	// check that port is in 0-65535 range, if given
-	if err := validatePort(parsed); err != nil {
-		return "", err
-	}
 
 	return parsed.String(), nil
 }
@@ -67,19 +68,4 @@ func parseWithSchemeFallback(str string, protocol string) (*url.URL, error) {
 	}
 
 	return parsed, nil
-}
-
-func validatePort(parsed *url.URL) error {
-	port := parsed.Port()
-
-	if port == "" {
-		return nil
-	}
-
-	// check that port is in 0-65535 range
-	if _, err := strconv.ParseUint(port, 10, 16); err != nil {
-		return fmt.Errorf("port %s is invalid: must be in range 0-65535", port)
-	}
-
-	return nil
 }
