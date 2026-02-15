@@ -7,38 +7,42 @@ import (
 	"strings"
 )
 
-type URLSanitizer interface {
-	Sanitize(raw string) (string, error)
+type URLSanitizer struct{}
+
+type SanitizedURL struct {
+	val string
 }
 
-type urlSanitizer struct{}
-
-func NewUrlSanitizer() URLSanitizer {
-	return &urlSanitizer{}
+func (s *SanitizedURL) String() string {
+	return s.val
 }
 
-func (s *urlSanitizer) Sanitize(raw string) (string, error) {
+func NewUrlSanitizer() *URLSanitizer {
+	return &URLSanitizer{}
+}
+
+func (s *URLSanitizer) Sanitize(raw string) (*SanitizedURL, error) {
 	trimmed := strings.TrimSpace(raw)
 
 	if trimmed == "" {
-		return "", fmt.Errorf("url is empty")
+		return nil, fmt.Errorf("url is empty")
 	}
 
 	parsed, err := parseWithSchemeFallback(trimmed, "https")
 
 	if err != nil {
-		return "", fmt.Errorf("url '%s' can't be parsed because: %s", trimmed, err)
+		return nil, fmt.Errorf("url '%s' can't be parsed because: %s", trimmed, err)
 	}
 
 	if parsed.Scheme != "https" && parsed.Scheme != "http" { // reject non-http urls
-		return "", fmt.Errorf("only http and https supported, but got '%s'", parsed)
+		return nil, fmt.Errorf("only http and https supported, but got '%s'", parsed)
 	}
 	if parsed.Port() != "" { // reject urls with port
-		return "", fmt.Errorf("only urls without port are accepted, but got '%s'", parsed)
+		return nil, fmt.Errorf("only urls without port are accepted, but got '%s'", parsed)
 	}
 
 	if parsed.Host == "" {
-		return "", fmt.Errorf("url host is empty: %s", parsed)
+		return nil, fmt.Errorf("url host is empty: %s", parsed)
 	}
 
 	parsed.User = nil // strip username and password
@@ -50,7 +54,7 @@ func (s *urlSanitizer) Sanitize(raw string) (string, error) {
 	parsed.RawQuery = parsed.Query().Encode()  // sort query params
 	parsed.Host = strings.ToLower(parsed.Host) // normalize host case
 
-	return parsed.String(), nil
+	return &SanitizedURL{val: parsed.String()}, nil
 }
 
 func parseWithSchemeFallback(str string, protocol string) (*url.URL, error) {

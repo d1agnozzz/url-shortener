@@ -115,7 +115,7 @@ func Test_urlSanitizer_Sanitize(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("Sanitize() succeeded unexpectedly")
 			}
-			if got != tt.want {
+			if got.String() != tt.want {
 				t.Errorf("Sanitize() = %v, want %v", got, tt.want)
 			}
 		})

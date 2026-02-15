@@ -21,13 +21,13 @@ func Test_md5AliasGenerator_GenerateByStr(t *testing.T) {
 		{"similar 3", "hellO"},
 	}
 
-	generator := NewMd5AliasGenerator()
+	aliasgen := NewAliasGenerator()
 
 	strToAlias := make(map[string]string, 0)
 
 	for _, tt := range tests {
 		t.Run("generate for "+tt.name, func(t *testing.T) {
-			strToAlias[tt.input] = generator.GenerateByStr(tt.input)
+			strToAlias[tt.input] = aliasgen.GenerateByStr(tt.input).String()
 
 			if len(strToAlias[tt.input]) != aliasLen {
 				t.Errorf("generator output len is %d, want %d", len(strToAlias[tt.input]), aliasLen)
@@ -39,7 +39,7 @@ func Test_md5AliasGenerator_GenerateByStr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("determinism for "+tt.name, func(t *testing.T) {
 			first := strToAlias[tt.input]
-			second := generator.GenerateByStr(tt.input)
+			second := aliasgen.GenerateByStr(tt.input).String()
 
 			if first != second {
 				t.Errorf("generator is not deterministic: given '%s' outputs '%s' and '%s'", tt.input, first, second)
@@ -64,8 +64,8 @@ func Test_md5AliasGenerator_GenerateByStr(t *testing.T) {
 }
 
 func BenchmarkGenerateByStr(b *testing.B) {
-	gen := NewMd5AliasGenerator()
-	for i := 0; i < b.N; i++ {
+	gen := NewAliasGenerator()
+	for b.Loop() {
 		gen.GenerateByStr("https://example.com/very/long/path?with=query")
 	}
 }
