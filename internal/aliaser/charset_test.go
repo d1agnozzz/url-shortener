@@ -1,4 +1,4 @@
-package aliasgenerator
+package aliaser
 
 import (
 	"math"

@@ -2,7 +2,7 @@ package storage
 
 import (
 	"fmt"
-	"github.com/d1agnozzz/url-shortener/internal/aliasgenerator"
+	"github.com/d1agnozzz/url-shortener/internal/aliaser"
 	"github.com/d1agnozzz/url-shortener/internal/types"
 	"github.com/d1agnozzz/url-shortener/internal/urlsanitizer"
 	"sync"
@@ -11,18 +11,18 @@ import (
 
 type inMemStorage struct {
 	mu          sync.RWMutex
-	urlMappings map[aliasgenerator.Alias]types.URLMapping
+	urlMappings map[aliaser.Alias]types.URLMapping
 	idGen       int64
 }
 
 func NewInMemoryStorage() inMemStorage {
-	res := make(map[aliasgenerator.Alias]types.URLMapping)
+	res := make(map[aliaser.Alias]types.URLMapping)
 	return inMemStorage{
 		urlMappings: res,
 	}
 }
 
-func (s *inMemStorage) CreateURLMapping(url urlsanitizer.SanitizedURL, alias aliasgenerator.Alias) (types.URLMapping, error) {
+func (s *inMemStorage) CreateURLMapping(url urlsanitizer.SanitizedURL, alias aliaser.Alias) (types.URLMapping, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -44,7 +44,7 @@ func (s *inMemStorage) CreateURLMapping(url urlsanitizer.SanitizedURL, alias ali
 	return new_mapping, nil
 }
 
-func (s *inMemStorage) GetByAlias(alias aliasgenerator.Alias) (*types.URLMapping, error) {
+func (s *inMemStorage) GetByAlias(alias aliaser.Alias) (*types.URLMapping, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

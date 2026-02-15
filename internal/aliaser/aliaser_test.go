@@ -1,11 +1,11 @@
-package aliasgenerator
+package aliaser
 
 import (
 	"strings"
 	"testing"
 )
 
-func Test_md5AliasGenerator_GenerateByStr(t *testing.T) {
+func Test_md5Aliaser(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -21,7 +21,7 @@ func Test_md5AliasGenerator_GenerateByStr(t *testing.T) {
 		{"similar 3", "hellO"},
 	}
 
-	aliasgen := NewAliasGenerator()
+	aliasgen := NewMd5Aliaser()
 
 	strToAlias := make(map[string]string, 0)
 
@@ -64,7 +64,7 @@ func Test_md5AliasGenerator_GenerateByStr(t *testing.T) {
 }
 
 func BenchmarkGenerateByStr(b *testing.B) {
-	gen := NewAliasGenerator()
+	gen := NewMd5Aliaser()
 	for b.Loop() {
 		gen.GenerateByStr("https://example.com/very/long/path?with=query")
 	}

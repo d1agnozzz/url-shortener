@@ -1,4 +1,4 @@
-package aliasgenerator
+package aliaser
 
 import (
 	"crypto/md5"
@@ -13,17 +13,21 @@ func (s Alias) String() string {
 	return s.val
 }
 
-type AliasGenerator struct{}
+type Aliaser interface {
+	GenerateByStr(str string) Alias
+}
 
-func NewAliasGenerator() *AliasGenerator {
-	return &AliasGenerator{}
+type md5Aliaser struct{}
+
+func NewMd5Aliaser() Aliaser {
+	return &md5Aliaser{}
 }
 
 var charset = generateCharset()
 
 const aliasLen = 10
 
-func (s *AliasGenerator) GenerateByStr(str string) Alias {
+func (s *md5Aliaser) GenerateByStr(str string) Alias {
 	hash := md5.Sum([]byte(str))
 	encoded := encodeToCharset(binary.BigEndian.Uint64(hash[:8]))
 

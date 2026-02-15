@@ -1,4 +1,4 @@
-package aliasgenerator
+package aliaser
 
 func generateCharset() []byte {
 	b := make([]byte, 0, 63)
