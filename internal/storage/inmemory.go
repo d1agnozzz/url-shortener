@@ -13,18 +13,22 @@ type inMemStorage struct {
 	mu          sync.RWMutex
 	urlMappings map[aliaser.Alias]types.URLMapping
 	idGen       int64
+	config      StorageConfig
 }
 
-func NewInMemoryStorage() inMemStorage {
+func NewInMemoryStorage(config StorageConfig) inMemStorage {
 	res := make(map[aliaser.Alias]types.URLMapping)
 	return inMemStorage{
 		urlMappings: res,
+		config:      config,
 	}
 }
 
 func (s *inMemStorage) CreateURLMapping(url urlsanitizer.SanitizedURL, alias aliaser.Alias) (types.URLMapping, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	alias := s.config.aliaser.GenerateByStr(url.String())
 
 	mapping, exists := s.urlMappings[alias]
 
