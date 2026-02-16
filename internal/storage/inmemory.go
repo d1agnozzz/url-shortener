@@ -1,69 +1,76 @@
 package storage
 
 import (
-	"fmt"
-	"github.com/d1agnozzz/url-shortener/internal/types"
-	"github.com/d1agnozzz/url-shortener/internal/urlsanitizer"
+	"context"
 	"sync"
 	"time"
+
+	"github.com/d1agnozzz/url-shortener/internal/types"
+	"github.com/jackc/pgx/v5"
 )
 
 type inMemStorage struct {
 	mu          sync.RWMutex
 	urlMappings map[string]types.URLMapping
 	idGen       int64
-	config      StorageConfig
 }
 
-func NewInMemoryStorage(config StorageConfig) inMemStorage {
+func NewInMemoryStorage() Storage {
 	res := make(map[string]types.URLMapping)
-	return inMemStorage{
+	return &inMemStorage{
 		urlMappings: res,
-		config:      config,
 	}
 }
 
-func (s *inMemStorage) CreateURLMapping(url urlsanitizer.SanitizedURL) (*types.URLMapping, error) {
+func (s *inMemStorage) InsertURLMapping(ctx context.Context, urlMapping types.URLMapping) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for attempt := 0; attempt <= s.config.maxCollisions; attempt++ {
-		salted := fmt.Sprintf("%s::%d", url.String(), attempt)
-		alias := s.config.aliaser.GenerateByStr(salted)
+	urlMapping.Id = s.idGen
+	urlMapping.CreatedAt = time.Now()
 
-		mapping, exists := s.urlMappings[alias.String()]
+	// check  by alias
+	_, exists := s.urlMappings[urlMapping.Alias]
 
-		if !exists {
-			newMapping := types.URLMapping{
-				Id:        s.idGen,
-				Url:       url.String(),
-				Alias:     alias.String(),
-				CreatedAt: time.Now().UTC(),
-			}
-			s.urlMappings[alias.String()] = newMapping
-			s.idGen++
-			return &newMapping, nil
-		}
+	if exists {
+		return InsertDuplicateError(urlMapping)
+	}
 
-		if mapping.Url == url.String() {
-			return &mapping, nil
+	// check duplicate by url
+	// TODO: fix linear scan
+	for _, v := range s.urlMappings {
+		if v.Url == urlMapping.Url {
+			return InsertDuplicateError(urlMapping)
 		}
 	}
 
-	return nil, fmt.Errorf("too much collisions, reject")
+	s.urlMappings[urlMapping.Alias] = urlMapping
+	s.idGen++
 
+	return nil
 }
 
-func (s *inMemStorage) GetByAlias(alias string) (*types.URLMapping, error) {
+func (s *inMemStorage) GetByAlias(ctx context.Context, alias string) (*types.URLMapping, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	url, exists := s.urlMappings[alias]
 
 	if !exists {
-		return nil, fmt.Errorf("url not found by alias '%s'", alias)
+		return nil, pgx.ErrNoRows
 	}
 
 	return &url, nil
-
 }

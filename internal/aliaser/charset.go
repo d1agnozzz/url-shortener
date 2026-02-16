@@ -21,7 +21,7 @@ func generateCharset() []byte {
 }
 
 func encodeToCharset(n uint64) []byte {
-	encoded := make([]byte, aliasLen)
+	encoded := make([]byte, AliasLen)
 	base := len(charset)
 
 	for i := range encoded {

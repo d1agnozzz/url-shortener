@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:18.2-alpine3.23
+    container_name: url-shortener-psql
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - urlshortener_network
+
+  urlshortener:
+    build:
+      context: .
+      args:
+        - STORAGE_TYPE=postgresql
+      dockerfile: Dockerfile
+    container_name: urlshortener_go
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+      PORT: 8080
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - urlshortener_network
+
+networks:
+  urlshortener_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

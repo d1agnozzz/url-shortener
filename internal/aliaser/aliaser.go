@@ -25,7 +25,7 @@ func NewMd5Aliaser() Aliaser {
 
 var charset = generateCharset()
 
-const aliasLen = 10
+const AliasLen = 10
 
 func (s *md5Aliaser) GenerateByStr(str string) Alias {
 	hash := md5.Sum([]byte(str))

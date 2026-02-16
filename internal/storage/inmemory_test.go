@@ -1,160 +1,100 @@
 package storage
 
 import (
+	"context"
 	"slices"
 	"sync"
 	"testing"
 
-	"github.com/d1agnozzz/url-shortener/internal/aliaser"
 	"github.com/d1agnozzz/url-shortener/internal/types"
-	"github.com/d1agnozzz/url-shortener/internal/urlsanitizer"
 )
 
-const NGOROUTINES = 16
-
-func Test_inMemStorage_CreateAndGet(t *testing.T) {
-	storage := NewInMemoryStorage(StorageConfig{
-		maxCollisions: 5,
-		aliaser:       aliaser.NewMd5Aliaser(),
-	})
-
-	sanitizer := urlsanitizer.NewUrlSanitizer()
-
-	url, _ := sanitizer.Sanitize("youtube.com")
-
-	mapping, err := storage.CreateURLMapping(*url)
-
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
-
-	if mapping.Url != url.String() {
-		t.Fatalf("created mapping url is different from given: got %s, want: %s", mapping.Url, url.String())
-	}
-
-	retrieved, err := storage.GetByAlias(mapping.Alias)
-
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
-
-	if retrieved.Url != url.String() {
-		t.Fatalf("retrieved url is different: got '%s', want '%s'", url.String(), retrieved.Url)
-	}
-}
-
-func Test_inMemStorage_CollisionResolution(t *testing.T) {
-	storage := NewInMemoryStorage(StorageConfig{
-		maxCollisions: 1,
-		aliaser:       aliaser.NewMd5Aliaser(),
-	})
-
-	sanitizer := urlsanitizer.NewUrlSanitizer()
-
-	url, _ := sanitizer.Sanitize("first.com")
-
-	mapping, err := storage.CreateURLMapping(*url)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// manual url override
-	storage.urlMappings[mapping.Alias] = types.URLMapping{
-		Url:   "DIFFERENT URL",
-		Alias: mapping.Alias,
-	}
-
-	newMapping, err := storage.CreateURLMapping(*url)
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
-
-	if newMapping.Url != url.String() {
-		t.Fatalf("wrong url mapping after collision")
-	}
-
-	if newMapping.Alias == mapping.Alias {
-		t.Fatalf("different urls with the same alias")
-	}
-
-}
-
 func Test_inMemStorage_CreateDuplicateURL(t *testing.T) {
-	storage := NewInMemoryStorage(StorageConfig{
-		maxCollisions: 5,
-		aliaser:       aliaser.NewMd5Aliaser(),
-	})
-	sanitizer := urlsanitizer.NewUrlSanitizer()
+	ctx := context.Background()
+	storage := NewInMemoryStorage()
 
-	url, _ := sanitizer.Sanitize("reddit.com")
-
-	firstMap, err := storage.CreateURLMapping(*url)
-	if err != nil {
-		t.Fatal(err)
+	toInsert := []types.URLMapping{
+		{
+			Url:   "SAME",
+			Alias: "different_1",
+		},
+		{
+			Url:   "SAME",
+			Alias: "different_2",
+		},
 	}
 
-	secondMap, err := storage.CreateURLMapping(*url)
-	if err != nil {
-		t.Fatal(err)
+	err1 := storage.InsertURLMapping(ctx, toInsert[0])
+
+	if err1 != nil {
+		t.Fatalf("first insertion error: %v", err1)
 	}
 
-	if *firstMap != *secondMap {
-		t.Fatalf("duplicate url returns different maps")
+	err2 := storage.InsertURLMapping(ctx, toInsert[1])
+
+	if err2 == nil {
+		t.Fatalf("duplicate insertion didn't return error")
 	}
 }
 
 func Test_inMemStorage_GetNotFound(t *testing.T) {
-	storage := NewInMemoryStorage(StorageConfig{
-		maxCollisions: 5,
-		aliaser:       aliaser.NewMd5Aliaser(),
-	})
+	ctx := context.Background()
+	storage := NewInMemoryStorage()
 
-	_, err := storage.GetByAlias("non existent alias")
+	_, err := storage.GetByAlias(ctx, "non existent alias")
 
 	if err == nil {
 		t.Fatalf("non nil error on failed get")
 	}
 }
 
-func Test_inMemStorage_ConcurrentCreate(t *testing.T) {
-	storage := NewInMemoryStorage(StorageConfig{
-		maxCollisions: 3,
-		aliaser:       aliaser.NewMd5Aliaser(),
-	})
-	sanitizer := urlsanitizer.NewUrlSanitizer()
+func Test_inMemStorage_ConcurrentInsert(t *testing.T) {
+	ctx := context.Background()
+	storage := NewInMemoryStorage()
 
-	rawUrls := []string{
-		"example1.com",
-		"example2.com",
-		"example3.com",
-		"example4.com",
-		"example5.com",
+	toInsert := []types.URLMapping{
+		{
+			Url:   "example1.com",
+			Alias: "1",
+		},
+		{
+			Url:   "example2.com",
+			Alias: "2",
+		},
+		{
+			Url:   "example3.com",
+			Alias: "3",
+		},
+		{
+			Url:   "example4.com",
+			Alias: "4",
+		},
+		{
+			Url:   "example5.com",
+			Alias: "5",
+		},
 	}
 
-	sanitizedUrls := make([]string, 0)
-
-	for _, v := range rawUrls {
-		sanitized, err := sanitizer.Sanitize(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		sanitizedUrls = append(sanitizedUrls, sanitized.String())
-	}
-
-	errCh := make(chan error, NGOROUTINES)
+	errCh := make(chan error, len(toInsert))
 
 	var wg sync.WaitGroup
-	wg.Add(NGOROUTINES)
+	wg.Add(len(toInsert))
 
-	for i := range NGOROUTINES {
+	for i := range len(toInsert) {
 		go func(n int) {
 			defer wg.Done()
-			url, _ := sanitizer.Sanitize(sanitizedUrls[n%len(sanitizedUrls)])
-			_, err := storage.CreateURLMapping(*url)
+			err := storage.InsertURLMapping(ctx, toInsert[n%len(toInsert)])
 
 			if err != nil {
-				errCh <- err
+				_, dupl := err.(InsertDuplicateError)
+
+				// ignore duplicate for test
+				if !dupl {
+					errCh <- err
+				}
+
 			}
+
 		}(i)
 	}
 
@@ -175,9 +115,17 @@ func Test_inMemStorage_ConcurrentCreate(t *testing.T) {
 	}
 
 	// data validation
-	unique_aliases := make([]string, 5)
+	var urls []string
 
-	for al, val := range storage.urlMappings {
+	for _, v := range toInsert {
+		urls = append(urls, v.Url)
+	}
+
+	// cast to concrete for testing
+	storage_, _ := storage.(*inMemStorage)
+
+	unique_aliases := make([]string, 5)
+	for al, val := range storage_.urlMappings {
 		if al != val.Alias {
 			t.Fatalf("data is corrupted!")
 		}
@@ -187,7 +135,7 @@ func Test_inMemStorage_ConcurrentCreate(t *testing.T) {
 		}
 		unique_aliases = append(unique_aliases, al)
 
-		if !slices.Contains(sanitizedUrls, val.Url) {
+		if !slices.Contains(urls, val.Url) {
 			t.Fatalf("data is corrupted!")
 		}
 

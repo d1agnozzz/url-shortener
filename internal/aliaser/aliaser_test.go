@@ -29,8 +29,8 @@ func Test_md5Aliaser(t *testing.T) {
 		t.Run("generate for "+tt.name, func(t *testing.T) {
 			strToAlias[tt.input] = aliasgen.GenerateByStr(tt.input).String()
 
-			if len(strToAlias[tt.input]) != aliasLen {
-				t.Errorf("generator output len is %d, want %d", len(strToAlias[tt.input]), aliasLen)
+			if len(strToAlias[tt.input]) != AliasLen {
+				t.Errorf("generator output len is %d, want %d", len(strToAlias[tt.input]), AliasLen)
 			}
 
 		})

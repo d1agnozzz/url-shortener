@@ -44,8 +44,8 @@ func Test_encodeToCharset_length(t *testing.T) {
 	for _, n := range tests {
 		got := encodeToCharset(n)
 
-		if len(got) != aliasLen {
-			t.Errorf("encodeToCharset(%d) returned length %d, want %d", n, len(got), aliasLen)
+		if len(got) != AliasLen {
+			t.Errorf("encodeToCharset(%d) returned length %d, want %d", n, len(got), AliasLen)
 		}
 	}
 }
