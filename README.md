@@ -18,7 +18,7 @@
     │   └── charset_test.go
     ├── api
     │   └── api.go
-    ├── storage //
+    ├── storage 
     │   ├── inmemory.go
     │   ├── inmemory_test.go
     │   ├── postgres.go
@@ -35,11 +35,13 @@
 - Создание короткой ссылка через POST
 
     > request Body: { "url" : "your_desired_url.com" }
+    > 
     > response Body: { "alias" : "vbrh10gm6_" }
 
 - Получение оригинальной ссылки по раннее полученому алиасу
 
     > GET request localhost:8080/vjrm693f_6
+    > 
     > response Body: { "url" : "youtube.com" }
 
 
